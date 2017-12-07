@@ -1,0 +1,39 @@
+<div class="row" ng-if="giCart.getBoltOnItems().length">
+  <div class="col-xs-12 hidden-xs ">
+    <label>Bolt-ons:</label>
+    <div class="table-responsive bolt-on cart">
+      <table class="table">
+        <tbody>
+        <tr ng-repeat="item in giCart.getBoltOnItems()">
+          <td><input type="checkbox" ng-model="item.is_selected" ng-change="changeBoltOnStatus(item)" id="{{ item.getId() + '-bolton' }}" /></td>
+          <td><label for="{{ item.getId() + '-bolton' }}">{{ item.getName() }}</label><br/></td>
+          <td><div class="pull-right">{{ item.getPrice(giCart.getPricingInfo()) | giCurrency:giCart.getCurrencySymbol}}</div></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="visible-xs col-xs-12" ng-show="giCart.getBoltOnItems().length">
+    <div class="mobile-cart-box well">
+      <h4>Bolt-ons:</h4>
+      <div class="row" ng-repeat="item in giCart.getBoltOnItems()">
+        <div class="col-xs-1">
+          <input type="checkbox" ng-model="item.is_selected" ng-change="changeBoltOnStatus(item)" id="{{ item.getId() + '-bolton-m' }}" />
+        </div>
+        <div class="col-xs-6 pull-left">
+          <label for="{{ item.getId() + '-bolton' }}">{{ item.getName() }}</label>
+        </div>
+        <div class="col-xs-5">
+          <div class="pull-right">{{ item.getPrice(giCart.getPricingInfo()) | giCurrency:giCart.getCurrencySymbol}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+</div>
+
+<style>
+  .bolt-on.cart {
+    width: 60%;
+  }
+</style>

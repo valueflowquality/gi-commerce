@@ -4,9 +4,9 @@ angular.module('gi.commerce').provider 'giCart', () ->
   @setThankyouDirective = (d) ->
     thankyouDirective = d
 
-  @$get = ['$q', '$rootScope', '$http', 'giCartItem', 'giLocalStorage'
+  @$get = ['$q', '$rootScope', '$http', 'giCartItem', 'giBoltOnItem', 'giLocalStorage'
   , 'giCountry', 'giCurrency', 'giPayment', 'giMarket', 'giUtil', '$window', 'giEcommerceAnalytics', 'giDiscountCode'
-  , ($q, $rootScope, $http, giCartItem, store, Country, Currency, Payment
+  , ($q, $rootScope, $http, giCartItem, giBoltOnItem, store, Country, Currency, Payment
   , Market, Util, $window, giEcommerceAnalytics, Discount) ->
     cart = {}
 
@@ -23,6 +23,30 @@ angular.module('gi.commerce').provider 'giCart', () ->
       angular.forEach cart.items,  (item) ->
         if item.getId() is itemId
           build = item
+      build
+
+    getIndexById = (itemId) ->
+      for item, i in cart.items
+        if item.getId() is itemId
+          return i
+
+    getBoltOnIndexById = (boltOnId) ->
+      for item, i in cart.boltOns
+        if item.getId() is boltOnId
+          return i
+
+    getBoltOnById = (boltOnId) ->
+      build = null
+      angular.forEach cart.boltOns,  (boltOn) ->
+        if boltOn.getId() is boltOnId
+          build = boltOn
+      build
+
+    getBoltOnByParentId = (boltOnId) ->
+      build = null
+      angular.forEach cart.boltOns,  (boltOn) ->
+        if boltOn.getParentId() is boltOnId
+          build = boltOn
       build
 
     getSubTotal = () ->
@@ -49,6 +73,7 @@ angular.module('gi.commerce').provider 'giCart', () ->
         taxName: ""
         taxExempt: false
         items : []
+        boltOns: []
         stage: 1
         validStages: {}
         isValid: true
@@ -113,6 +138,8 @@ angular.module('gi.commerce').provider 'giCart', () ->
     c =
       init: init
 
+      getIndexById: getIndexById
+
       checkCode: (code) ->
         deferred = $q.defer()
         cart.discountPercent = 0
@@ -130,7 +157,7 @@ angular.module('gi.commerce').provider 'giCart', () ->
 
 
 
-      addItem: (id, name, priceList, quantity, data) ->
+      addItem: (id, name, priceList, quantity, data, boltOns=[], isBoltOn=false) ->
 
         inCart = getItemById(id)
 
@@ -138,11 +165,23 @@ angular.module('gi.commerce').provider 'giCart', () ->
           #Update quantity of an item if it's already in the cart
           inCart.setQuantity(quantity, false)
         else
-          newItem = new giCartItem(id, name, priceList, quantity, data)
+          newItem = new giCartItem(id, name, priceList, quantity, data, boltOns, isBoltOn)
           cart.items.push(newItem)
           $rootScope.$broadcast('giCart:itemAdded', newItem)
 
         $rootScope.$broadcast('giCart:change', {})
+
+      addBoltOn: (id, name, priceList, quantity, data) ->
+
+        inList = getBoltOnById(id)
+
+        if angular.isObject(inList)
+          inList.increase()
+        else
+          newBoltOnItem = new giBoltOnItem(id, name, priceList, quantity, data)
+          cart.boltOns.push(newBoltOnItem)
+          $rootScope.$broadcast('giCart:boltOnItemAdded', newBoltOnItem)
+          $rootScope.$broadcast('giCart:change', {})
 
       setTaxRate: (tax) ->
         cart.tax = tax
@@ -175,6 +214,9 @@ angular.module('gi.commerce').provider 'giCart', () ->
 
       getItems: () ->
         cart.items
+
+      getBoltOnItems: () ->
+        cart.boltOns
 
       getStage: () ->
         cart.stage
@@ -285,8 +327,31 @@ angular.module('gi.commerce').provider 'giCart', () ->
         else
           return false
 
+      removeBoltOnItem: (id) ->
+        boltOn = getBoltOnById(id)
+        if boltOn?.decrease() is 0
+          cart.boltOns.splice getBoltOnIndexById(id), 1
+          boltOn
+        else
+          null
+
+      removeBoltOns: (boltOns) ->
+        for boltOn in boltOns
+          removed_item = @removeBoltOnItem(boltOn)
+          if removed_item
+            cartBoltOnIndex = getIndexById(removed_item.getParentId())
+            if cartBoltOnIndex
+              cart.items.splice cartBoltOnIndex, 1
+
       removeItem: (index) ->
-        cart.items.splice index, 1
+        item = cart.items[index]
+        unless item.isBoltOn()
+          @removeBoltOns(item.getBoltOns())
+        else
+          boltOn = getBoltOnByParentId(item.getId())
+          boltOn.is_selected = false
+
+        cart.items.splice getIndexById(item.getId()), 1
         $rootScope.$broadcast 'giCart:itemRemoved', {}
         $rootScope.$broadcast 'giCart:change', {}
 
@@ -370,7 +435,12 @@ angular.module('gi.commerce').provider 'giCart', () ->
 
         angular.forEach storedCart.items, (item) ->
           cart.items.push(new giCartItem(
-            item._id,  item._name, item._priceList, item._quantity, item._data)
+            item._id,  item._name, item._priceList, item._quantity, item._data, item._boltOns, item._isBoltOn)
+          )
+
+        angular.forEach storedCart.boltOns, (item) ->
+          cart.boltOns.push(new giBoltOnItem(
+            item._id,  item._data.name, item._data.priceList, item._data.quantity, item._data.data, item.is_selected, item._quantity)
           )
 
         save()

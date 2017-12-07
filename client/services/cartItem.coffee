@@ -2,12 +2,14 @@ angular.module('gi.commerce').factory 'giCartItem'
 , ['$rootScope', 'giLocalStorage'
 , ($rootScope, store) ->
 
-  item = (id, name, priceList, quantity,data) ->
+  item = (id, name, priceList, quantity, data, boltOns=[], isBoltOn=false) ->
     @setId(id)
     @setName(name)
     @setPriceList(priceList)
     @setQuantity(quantity)
     @setData(data)
+    @setBoltOns(boltOns)
+    @setIsBoltOn(isBoltOn)
 
   item.prototype.setId = (id) ->
     if (id)
@@ -71,6 +73,21 @@ angular.module('gi.commerce').factory 'giCartItem'
     else
       console.info('This item has no data')
       return
+
+  item.prototype.setIsBoltOn = (IsBoltOn) ->
+    @_isBoltOn = !!IsBoltOn
+
+  item.prototype.isBoltOn = () ->
+    return @_isBoltOn
+
+  item.prototype.setBoltOns = (boltOns) ->
+    if boltOns instanceof Array
+      @_boltOns = boltOns
+    else
+      console.error('Bolt-ons must be array')
+
+  item.prototype.getBoltOns = () ->
+    return @_boltOns
 
   item.prototype.getSubTotal = (priceInfo) ->
     itemPrice = @getPrice(priceInfo)
